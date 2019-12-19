@@ -128,6 +128,12 @@ function term {
   find `pwd` -type f -print | xargs grep -o $1
 }
 
+function search {
+  echo "Searching for '$1' in '`pwd`'..."
+  grep -s --directories recurse --color=always $1 *
+  echo "DONE!"
+}
+
 #endregion
 
 #region files
@@ -277,11 +283,15 @@ function git-submodule-delete {
 	echo "Deleted submodule $1"
 }
 
-function gcs {
+function git-commit-secure {
   git pull
   git add .
   git commit -S -am "$1"
   git push
+}
+
+function gcs {
+  git-commit-secure
 }
 
 function gc {
@@ -348,7 +358,15 @@ function git-fix-commits {
 
 #region text
 
-function cleanaccentsdirs {
+function trim-end {
+  echo -e  $1 | sed 's/.\{"$2"\}$//'
+}
+
+function unique-lines {
+  cat $1 | sort -rn | uniq -u
+}
+
+function clean-accents-dirs {
   find . -type d | tail -r | while IFS= read -r d; do 
     d_clean=`echo $d | iconv -c -f utf8 -t ascii`
     if [ "$d" = "$d_clean" ]
@@ -361,7 +379,7 @@ function cleanaccentsdirs {
   done
 }
 
-function cleanaccentsfiles {
+function clean-accents-files {
   find . -name "*" | while IFS= read -r f; do 
     f_clean=`echo $f | iconv -c -f utf8 -t ascii`
     if [ "$f" = "$f_clean" ]
@@ -374,9 +392,13 @@ function cleanaccentsfiles {
   done
 }
 
-function cleanaccents {
+function clean-accents {
   cleanaccentsdirs
   cleanaccentsfiles
+}
+
+function spaces-to-breaks {
+  tr ' ' '\n' < $1
 }
 
 #endregion
@@ -470,24 +492,82 @@ function service-restart {
 
 #endregion
 
+#region web
+
+function webvacuum {
+  wget --mirror         \
+    --convert-links     \
+    --html-extension    \
+    --wait=2            \
+    -o log              \
+    $1
+}
+
+#endregion
+
+#region colors
+
+function color-table-rgb {
+
+  #### For 16 Million colors use \e[0;38;2;R;G;Bm each RGB is {0..255}
+  echo
+  echo 'Mode 2 Color Table'
+  echo '------------------' && echo
+  echo 
+  echo 'Parameters are 3 or 4 (foreground or background)'
+  #printf '\e[mR'
+  echo "Some samples of colors for r;g;b. Each one may be 000..255"
+  echo '\e[m%59s\n' "for the ansi option: \e[0;38;2;r;g;bm or \e[0;48;2;r;g;bm :"
+  echo
+
+  # foreground or background (only 3 or 4 are accepted)
+  local fb="$1"
+  [[ $fb != 3 ]] && fb=4
+  local samples=(0 63 127 191 255)
+  for         r in "${samples[@]}"; do
+      for     g in "${samples[@]}"; do
+          for b in "${samples[@]}"; do
+              printf '\e[0;%s8;2;%s;%s;%sm%03d;%03d;%03d ' "$fb" "$r" "$g" "$b" "$r" "$g" "$b"
+          done; printf '\e[m\n'
+      done; printf '\e[m'
+  done; echo # && printf 'e[m' && echo
+}
+
+function color {
+  for c; do
+    printf '\e[48;5;%dm%03d' $c $c
+  done
+  printf '\e[0m \n'
+}
+
+function color-table {
+	IFS=$' \t\n'
+	color {0..15}
+	for ((i=0;i<6;i++)); do
+    color $(seq $((i*36+16)) $((i*36+51)))
+	done
+	color {232..255}
+}
+
+#endregion
+
 #region mac specific
 
 if [[ $OS == 'Mac' ]]; then
-	alias showfiles='defaults write com.apple.finder AppleShowAllFiles YES; killall Finder /System/Library/CoreServices/Finder.app'
-	alias hidefiles='defaults write com.apple.finder AppleShowAllFiles NO; killall Finder /System/Library/CoreServices/Finder.app'
-	alias rmderived='rm -rf ~/library/Developer/Xcode/DerivedData/*'
-	alias hidedesktopicons='defaults write com.apple.finder CreateDesktop FALSE && killall Finder'
-	alias showdesktopicons='defaults write com.apple.finder CreateDesktop TRUE && killall Finder'
-	alias cleanproj='rm -r *.xcodeproj/xcuserdata && rm -r *.xcodeproj/project.xcworkspace/xcuserdata'
+	alias show-files='defaults write com.apple.finder AppleShowAllFiles YES; killall Finder /System/Library/CoreServices/Finder.app'
+	alias hide-files='defaults write com.apple.finder AppleShowAllFiles NO; killall Finder /System/Library/CoreServices/Finder.app'
+	alias hide-desktop-icons='defaults write com.apple.finder CreateDesktop FALSE && killall Finder'
+	alias show-desktop-icons='defaults write com.apple.finder CreateDesktop TRUE && killall Finder'
   alias flushdns='sudo killall -HUP mDNSResponder;sudo killall mDNSResponderHelper;sudo dscacheutil -flushcache'
 
-	function setwallpaper {
+	function set-wallpaper {
     osascript -e 'tell application "Finder" to set desktop picture to POSIX file "$(pwd)/$1"'
 	}
 
   function xagree {
       sudo xcodebuild -license
   }
+
 fi
 
 #endregion
