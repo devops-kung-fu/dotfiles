@@ -291,7 +291,7 @@ function git-commit-secure {
 }
 
 function gcs {
-  git-commit-secure
+  git-commit-secure $1
 }
 
 function gc {
@@ -352,6 +352,15 @@ function git-fix-commits {
     GIT_COMMITTER_EMAIL=$GIT_AUTHOR_EMAIL &&
     export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
   ' -- --all
+}
+
+#endregion
+
+#region kubernetes
+
+alias k="kubectl"
+function kube-dashboard-token {
+  kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}')
 }
 
 #endregion
