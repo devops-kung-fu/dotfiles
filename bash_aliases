@@ -4,11 +4,6 @@ export PS1="\[\033[38;5;14m\]\u\[$(tput sgr0)\]\[\033[38;5;15m\]@\[$(tput sgr0)\
 export LSCOLORS=ExfxcxdxBxegedabagacad
 export CLICOLOR=1
 
-#load private aliases if available
-if [ -f ~/.bash_private_aliases ]; then
-    . ~/.bash_private_aliases
-fi
-
 #region globals
 
 red=`tput setaf 1`
@@ -677,3 +672,8 @@ if os Darwin; then
 fi
 
 #endregion
+
+#load private aliases if available
+if [ -f ~/.bash_private_aliases ]; then
+    . ~/.bash_private_aliases
+fi
