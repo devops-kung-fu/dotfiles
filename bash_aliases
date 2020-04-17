@@ -46,6 +46,22 @@ function os {
   return 1
 }
 
+function exists {
+  if [ -x "$(command -v $1)" ]; then
+    return 0
+  fi
+  return 1
+}
+
+function waitsec {
+  secs=$1 #$(($1 * 60))
+  while [ $secs -gt 0 ]; do
+    printf "Waiting: $secs \033[0K\r"
+    sleep 1
+    : $((secs--))
+  done
+}
+
 function confirm {
   read -r -p "${1:-Are you sure? [y/N]} " response
   case "$response" in
@@ -434,32 +450,32 @@ function docker-rmi {
 	docker rmi $(docker images --format '{{.Repository}}:{{.Tag}}' | grep $1)
 }
 
+alias d="docker"
 alias ds="_ds"
 alias de='${EDITOR} Dockerfile'
-alias dl='docker ps -l -q'
-alias li='docker image list'
-alias dkl='docker kill `dl` && docker rm `dl`'
-alias dil='docker exec -it `dl` bash'
-alias dsh='docker-shell-app'
-alias dlog='docker logs -f `dl`'
-alias dcc='docker ps -a -q -f status=exited | xargs L1 docker rm -v'
-alias dci='docker rmi $(docker images -q) --force'
-alias dps='docker ps'
-alias dr='docker-run'
+alias dl='d ps -l -q'
+alias li='d image list'
+alias dkl='d kill `dl` && docker rm `dl`'
+alias dil='d exec -it `dl` bash'
+alias dsh='d -shell-app'
+alias dlog='d logs -f `dl`'
+alias dcc='d ps -a -q -f status=exited | xargs L1 docker rm -v'
+alias dci='d rmi $(docker images -q) --force'
+alias dps='d ps'
+alias dr='d -run'
 
-alias dsa='docker stop $(docker ps -a -q)'
-alias drma='docker rm $(docker ps -aq)'
-alias diu='docker images | awk `{print $1}` | xargs -L1 docker pull'
+alias dsa='d stop $(d ps -a -q)'
+alias drma='d rm $(d ps -aq)'
+alias diu='d images | awk `{print $1}` | xargs -L1 docker pull'
 alias up='docker-compose up -d'
 alias down='docker-compose down'
-
-alias dry="docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock moncho/dry"
 
 #endregin
 
 #region kubernetes
 
 alias k="kubectl"
+
 function kube-dashboard-token {
   kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}')
 }
