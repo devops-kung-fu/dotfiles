@@ -304,6 +304,8 @@ function gc {
 	# done
 }
 
+export GPG_TTY=`tty`
+
 function git-clear {
   git pull -a > /dev/null
 

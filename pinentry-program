@@ -1,0 +1,2 @@
+# This tells gpg to use the gpg-agent
+use-agent
