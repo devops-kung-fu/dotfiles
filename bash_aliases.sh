@@ -1,37 +1,10 @@
 #!/bin/bash
 
-#load private aliases if available
-if [ -f ~/.bash_private_aliases ]; then
-    . ~/.bash_private_aliases
-fi
-
-#region terminal colors
-
-export PS1="\[\033[36m\]\u\[\033[m\]@\[\033[32m\]\h:\[\033[33;1m\]\w\[\033[m\]\$ "
-export CLICOLOR=1
+# export PS1="\[\033[38;5;14m\]\u\[$(tput sgr0)\]\[\033[38;5;15m\]@\[$(tput sgr0)\]\[\033[38;5;2m\]\h\[$(tput sgr0)\]\[\033[38;5;15m\]:\[$(tput sgr0)\]\[\033[38;5;11m\]\w\[$(tput sgr0)\]\[\033[38;5;15m\]\\$ \[$(tput sgr0)\]"
 export LSCOLORS=ExfxcxdxBxegedabagacad
-export EDITOR="nano"
-export TEMP="/tmp"
-
-#endregion
+export CLICOLOR=1
 
 #region globals
-export OS=$(uname)
-OS="`uname`"
-case $OS in
-  'Linux')
-    export OS='Linux'
-    alias ls='ls --color=auto'
-    ;;
-  'Darwin')
-    export OS='Mac'
-    ;;
-  *) ;;
-  'penguin')   #Chromebook Terminal VM
-    export OS='penguin'
-    alias ls='ls --color=auto'
-    ;;
-esac
 
 red=`tput setaf 1`
 green=`tput setaf 2`
@@ -44,12 +17,49 @@ orange=`tput setaf 202`
 lightblue=`tput setaf 39`
 reset=`tput sgr0`
 
+export EDITOR="nano"
+export TEMP="/tmp"
+
+function notavailable {
+  echo "$1 not available on `lowercase \`uname\``"
+}
+
 function progressbar {
   local w=80 p=$1;  shift
   # create a string of spaces, then change them to dots
   printf -v dots "%*s" "$(( $p*$w/100 ))" ""; dots=${dots// /.};
   # print those dots on a fixed-width space plus the percentage etc. 
   printf "\r\e[K|%-*s| %3d %% %s" "$w" "$dots" "$p" "$*"; 
+}
+
+function lowercase(){
+    echo "$1" | sed "y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
+}
+
+function os {
+  INSTALLEDOS=`lowercase \`uname\``
+  PASSEDOS=`lowercase $1`
+
+  if [[ $INSTALLEDOS == $PASSEDOS ]]; then
+      return 0
+  fi
+  return 1
+}
+
+function exists {
+  if [ -x "$(command -v $1)" ]; then
+    return 0
+  fi
+  return 1
+}
+
+function waitsec {
+  secs=$1 #$(($1 * 60))
+  while [ $secs -gt 0 ]; do
+    printf "Waiting: $secs \033[0K\r"
+    sleep 1
+    : $((secs--))
+  done
 }
 
 function confirm {
@@ -70,13 +80,13 @@ function aliases { # Show a list of functions and aliases
 }
 
 function clip {
-  if [[ $OS == 'Mac' ]]; then
+  if os Darwin; then
     cat $1 | pbcopy
   fi
 }
 
 function clippwd {
-  if [[ $OS == 'Mac' ]]; then
+  if os Darwin; then
     echo `pwd` |  pbcopy
   fi
 }
@@ -166,7 +176,7 @@ function rr {
 alias ipaddr="ifconfig | grep inet | grep -v inet6 | cut -d ' ' -f2"
 alias listen="sudo lsof -i -P -n | grep LISTEN"
 
-if [[ $OS == 'Linux' ]]; then
+if os Linux; then
   alias ports='sudo netstat -tulpn | grep LISTEN'
   alias mailports="netstat -tulpn | grep -E -w '25|80|110|143|443|465|587|993|995|4190'"
   alias ips="/sbin/ifconfig eth0 | /bin/grep 'inet' | /usr/bin/cut -d ':' -f 2 | grep -oE '((1?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\.){3}(1?[0-9][0-9]?|2[0-4][0-9]|25[0-5])'"
@@ -358,9 +368,116 @@ function git-fix-commits {
 
 #endregion
 
+#region docker
+
+alias ddisk='docker run --rm -it -v /:/docker alpine:edge $@'
+
+# @description Lists docker volumes on the current host
+# @noargs
+function dvol {
+	ddisk ls -l /docker/var/lib/docker/volumes/
+}
+
+function dvolrm {
+	read -p "Are you sure you want to force delete the \"$1\" docker volume? " -n 1 -r
+	echo
+  confirm && docker volume rm $1
+}
+
+# @description Determines if the current user is logged into Dockerhub
+# @noargs
+function docker-logged-in {
+  if [[ !  -z $(cat ~/.docker/config.json | jq ".HttpHeaders" | grep "darwin") ]]; then
+    if [[ ! -z $(cat ~/.docker/config.json | jq ".credSstore") ]]; then
+      echo "You are currently logged into Docker (Mac)"
+    fi
+  else
+    if [[ ! -z $(cat ~/.docker/config.json | jq ".auths[].auth") ]]; then
+      echo "You are currently logged into Docker (linux)"
+    fi
+  fi
+}
+
+function docker-shell {
+  SHELL=$1
+  IMAGE=$2
+  docker run --rm -it --entrypoint=/bin/$SHELL $2
+}
+
+function docker-hub-login {
+  docker login --username=$1 --password=$2
+}
+
+function docker-login {
+	docker exec -it $1 $2
+}
+
+function docke-run {
+	docker run --rm -it $1
+}
+
+function docker-clean {
+	$(docker ps -a -q -f status=exited) | xargs L1 docker rm -v
+	$(docker images -f "dangling=true" -q) | xargs L1 docker rmi
+}
+
+function docker-shell-app {
+  app="/bin/bash"
+  if [ ! -z "$2" ]; then
+    app=$2
+  fi
+  echo "[+] Running $app in container $1"
+  docker exec -it $1 $app
+}
+
+function docker-deep-clean {
+	# Delete every Docker containers
+	# Must be run first because images are attached to containers
+	docker rm $(docker ps -a -q)
+
+	# Delete every Docker image
+	docker rmi $(docker images -q)
+}
+
+function docker-stop {
+  echo $(docker ps -a -q -f status=running) | xargs docker stop
+  echo $(docker ps -a -q -f status=exited) | xargs docker rm
+}
+
+# @description Removes all cached docker images by name
+# @example
+#   dockerrmi nginx - Removes any image with "NGINX" in the name
+# @arg $1 string Name or partial name to match
+function docker-rmi {
+	docker rmi $(docker images --format '{{.Repository}}:{{.Tag}}' | grep $1)
+}
+
+alias d="docker"
+alias ds="_ds"
+alias de='${EDITOR} Dockerfile'
+alias dl='d ps -l -q'
+alias li='d image list'
+alias dkl='d kill `dl` && docker rm `dl`'
+alias dil='d exec -it `dl` bash'
+alias dsh='d -shell-app'
+alias dlog='d logs -f `dl`'
+alias dcc='d ps -a -q -f status=exited | xargs L1 docker rm -v'
+alias dci='d rmi $(docker images -q) --force'
+alias dps='d ps'
+alias dr='d -run'
+
+alias dsa='d stop $(d ps -a -q)'
+alias drma='d rm $(d ps -aq)'
+alias diu='d images | awk `{print $1}` | xargs -L1 docker pull'
+alias up='docker-compose up -d'
+alias down='docker-compose down'
+
+#endregin
+
 #region kubernetes
 
 alias k="kubectl"
+
 function kube-dashboard-token {
   kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}')
 }
@@ -417,88 +534,79 @@ function spaces-to-breaks {
 #region services
 
 function boot-log {
-	if [[ "$OS" != "Darwin" ]]; then
+	if ! os Darwin ]]; then
 		journalctl _PID=1
-	else 
-		echo "${FUNCNAME[0]} not available on OSX"
-	fi
+    return
+	fi 
+	notavailable ${FUNCNAME[0]}
 }
 
 function service-list {
-	if [[ "$OS" != "Darwin" ]]; then
+	if ! os Darwin; then
 		systemctl list-unit-files
-	else 
-		echo "${FUNCNAME[0]} not available on OSX"
-	fi
+	fi 
+	notavailable ${FUNCNAME[0]}
 }
 
 function service-long-start {
-	if [[ "$OS" != "Darwin" ]]; then
+	if ! os Darwin; then
 		systemd-analyze blame
-	else 
-		echo "${FUNCNAME[0]} not available on OSX"
-	fi
+	fi 
+	notavailable ${FUNCNAME[0]}
 }
 
 function service-list-systemd {
-	if [[ "$OS" != "Darwin" ]]; then
+	if ! os "Darwin"; then
 		systemctl list-units --type service
-	else 
-		echo "${FUNCNAME[0]} not available on OSX"
-	fi
+	fi 
+	notavailable ${FUNCNAME[0]}
 }
 
 function service-list-enabled {
-	if [[ "$OS" != "Darwin" ]]; then
-		systemctl list-units --type service | grep enabled
-	else 
-		echo "${FUNCNAME[0]} not available on OSX"
-	fi
+	if ! os "Darwin"; then
+    systemctl list-units --type service | grep enabled
+	fi 
+	notavailable ${FUNCNAME[0]}
 }
 
 function service-status {
 	#$1 is the name of the service
-	if [[ "$OS" != "Darwin" ]]; then
+	if ! os "Darwin"; then
 		systemctl status $1
-	else 
-		echo "${FUNCNAME[0]} not available on OSX"
-	fi
+	fi 
+	notavailable ${FUNCNAME[0]}
 }
 
 function service-isactive {
 	#$1 is the name of the service
-	if [[ "$OS" != "Darwin" ]]; then
+	if ! os "Darwin"; then
 		systemctl is-active $1
-	else 
-		echo "${FUNCNAME[0]} not available on OSX"
-	fi
+	fi 
+	notavailable ${FUNCNAME[0]}
 }
 
 function service-isenabled {
 	#$1 is the name of the service
-	if [[ "$OS" != "Darwin" ]]; then
+	if ! os "Darwin"; then
 		systemctl is-enabled $1
-	else 
-		echo "${FUNCNAME[0]} not available on OSX"
-	fi
+	fi 
+	notavailable ${FUNCNAME[0]}
 }
 
 function service-edit {
 	#$1 is the name of the service (no extension)
-	if [[ "$OS" != "Darwin" ]]; then
+	if ! os "Darwin"; then
 		micro /etc/systemd/system/$1.service
-	else 
-		echo "${FUNCNAME[0]} not available on OSX"
-	fi
+	fi 
+	notavailable ${FUNCNAME[0]}
 }
 
 function service-restart {
 	#$1 is the name of the service (no extension)
-	if [[ "$OS" != "Darwin" ]]; then
+	if ! os "Darwin"; then
 		systemctl restart $1.service
-	else 
-		echo "${FUNCNAME[0]} not available on OSX"
-	fi
+	fi 
+	notavailable ${FUNCNAME[0]}
 }
 
 #endregion
@@ -564,7 +672,7 @@ function color-table {
 
 #region mac specific
 
-if [[ $OS == 'Mac' ]]; then
+if os Darwin; then
 	alias show-files='defaults write com.apple.finder AppleShowAllFiles YES; killall Finder /System/Library/CoreServices/Finder.app'
 	alias hide-files='defaults write com.apple.finder AppleShowAllFiles NO; killall Finder /System/Library/CoreServices/Finder.app'
 	alias hide-desktop-icons='defaults write com.apple.finder CreateDesktop FALSE && killall Finder'
@@ -583,20 +691,7 @@ fi
 
 #endregion
 
-#region old
-
-# echo "Setting up scripts for $OS..."
-# if [[ $OS == 'Linux' ]]; then
-#   grep -q -F 'do source' ~/.bashrc || echo "" >> ~/.bashrc
-#   grep -q -F 'SCRIPT_ROOT' ~/.bashrc || echo -e 'export SCRIPT_ROOT='$CURRENT >> ~/.bashrc
-#   grep -q -F 'do source' ~/.bashrc || echo "for f in $CURRENT/*.sh; do source \$f; done" >> ~/.bashrc
-# fi
-
-# if [[ $OS == 'Mac' ]]; then
-#   grep -q -F 'do source' ~/.bash_profile || echo "" >> ~/.bash_profile
-#   grep -q -F 'SCRIPT_ROOT' ~/.bash_profile || echo 'export SCRIPT_ROOT='$CURRENT >> ~/.bash_profile
-#   grep -q -F 'do source' ~/.bash_profile || echo "for f in $CURRENT/*.sh; do source \$f; done" >> ~/.bash_profile
-  
-# fi
-
-#endregion
+#load private aliases if available
+if [ -f ~/.bash_private_aliases ]; then
+    . ~/.bash_private_aliases
+fi
