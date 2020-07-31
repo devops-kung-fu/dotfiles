@@ -301,7 +301,7 @@ function git-commit-secure {
 }
 
 function gcs {
-  git-commit-secure $1
+  git-commit-secure "$1"
 }
 
 function gc {
@@ -551,6 +551,13 @@ function service-list {
 function service-long-start {
 	if ! os Darwin; then
 		systemd-analyze blame
+	fi 
+	notavailable ${FUNCNAME[0]}
+}
+
+function service-cat {
+	if ! os Darwin; then
+		systemctl cat $1
 	fi 
 	notavailable ${FUNCNAME[0]}
 }
