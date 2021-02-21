@@ -93,6 +93,16 @@ function clippwd {
 
 #endregion
 
+#region linux specific
+
+if os Linux; then
+  function update {
+    sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y
+  }
+fi
+
+#endregion
+
 #region navigation
 
 alias ..="cd .."
