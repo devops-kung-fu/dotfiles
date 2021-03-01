@@ -230,8 +230,8 @@ if [ -x "$(command -v git)" ]; then
   git config --global core.editor $EDITOR
 fi
 
+alias gpa="git remote | xargs -L1 git push --all"
 alias gs='git status'
-alias gb='git branch'
 alias glo='git log --pretty=oneline'
 alias gsl='git config --list|egrep ^submodule'
 alias gls='git log --pretty="format:%h %G? %aN  %s"'
@@ -243,6 +243,14 @@ alias gprune="git fetch -p && git branch -vv | awk '/: gone]/{print $1}' | xargs
 alias ggg='git log --oneline --graph --decorate --all'
 alias gg="git log --graph --abbrev-commit --decorate --date=relative --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' --all"
 alias grl="git remote get-url --all origin"
+
+function gb {
+  if [[ -n "$1" ]]; then
+    git branch $1 && git checkout $1
+  else
+    git branch
+  fi
+}
 
 # @description Clones all repositories in an organization on Github
 # @example
@@ -323,6 +331,10 @@ function git-commit-secure {
 
 function gcs {
   git-commit-secure "$1"
+}
+
+function gcsa {
+  git commit-secure "$1" && gpa
 }
 
 function gc {
