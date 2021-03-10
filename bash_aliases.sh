@@ -244,6 +244,10 @@ alias ggg='git log --oneline --graph --decorate --all'
 alias gg="git log --graph --abbrev-commit --decorate --date=relative --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' --all"
 alias grl="git remote get-url --all origin"
 
+# @description Creates a branch and checks it out if a param is passed, otherwise lists all branches
+# @example
+#   gb wip
+# @arg  string The name of the branch (optional)
 function gb {
   if [[ -n "$1" ]]; then
     git branch $1 && git checkout $1
@@ -263,6 +267,20 @@ function git-clone-org {
 	connect_method="ssh_url"
 	locator="github.com"
 	curl -s https://$1:@api.github.com/orgs/$2/repos?per_page=200 | jq .[].$connect_method | xargs -n 1 -i echo {} | sed -e "s/$locator/$3/g" | xargs -n 1 git clone
+}
+
+# @description Pushes a release tag to the origin remote and current branch
+# @example
+#   gitorade v1.0.0
+# @arg string The version number for the release
+function gitorade {
+  message="Release $1"
+  branch=`git branch 2> /dev/null | grep -e ^* | sed -E  s/^\\\\\*\ \(.+\)$/\\\\\\1\\ /`
+  git add .
+  git commit -S -m "$message"
+  git push origin $branch
+  git tag -a $1 -m "$message"
+  git push origin --tags
 }
 
 # @description Logs into github with either a --global
@@ -287,6 +305,8 @@ function git-whoami {
 	echo "git logged in as \"`git config user.name` <`git config user.email`>\""
 }
 
+# @description Pulls all remote branches locally - definitely use with caution
+# @noargs
 function git-pull-all {
 	git branch -r | grep -v '\->' | while read remote; do git branch --track "${remote#origin/}" "$remote"; done
 	git fetch --all
@@ -322,6 +342,8 @@ function git-submodule-delete {
 	echo "Deleted submodule $1"
 }
 
+# @description Adds, commits, and pushes current changes with a GPG key to origin and current branch
+# @arg string The commit message
 function git-commit-secure {
   git pull
   git add .
@@ -329,22 +351,26 @@ function git-commit-secure {
   git push
 }
 
+# @description Adds, commits, and pushes current changes with a GPG key to origin and current branch
+# @arg string The commit message
 function gcs {
   git-commit-secure "$1"
 }
 
+# @description Adds, commits, and pushes current changes with a GPG key to origin and current branch then pushes to all remotes
+# @arg string The commit message
 function gcsa {
   git commit-secure "$1" && gpa
 }
 
+
+# @description Adds, commits, and pushes current changes WITHOUT a GPG key to origin and current branch
+# @arg string The commit message
 function gc {
   echo "Use the non-secure way?" && confirm
 	git add .
 	git commit -am "$1"
 	git push
-	# for remote in $(git remote);
-    # do git push $remote master;
-	# done
 }
 
 export GPG_TTY=`tty`
@@ -375,6 +401,10 @@ function git-clear {
   git branch -vv
 }
 
+# @description Shows the history of a specific file
+# @example
+#   git-file-history README.md
+# @arg string The file to show history for
 function git-file-history {
 	git log -p -- $1
 }
