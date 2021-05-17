@@ -110,6 +110,15 @@ if os Linux; then
   function update {
     sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y
   }
+
+  function loadenv {
+    if [ -f $1 ]; then
+      export $(cat $1 | sed 's/#.*//g' | xargs)
+    else
+      echo "No $1 file found" 1>&2
+      return 1
+    fi
+  }
 fi
 
 #endregion
@@ -345,7 +354,6 @@ function git-submodule-delete {
 # @description Adds, commits, and pushes current changes with a GPG key to origin and current branch
 # @arg string The commit message
 function git-commit-secure {
-  git pull
   git add .
   git commit -S -am "$1"
   git push
