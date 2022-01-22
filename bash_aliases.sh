@@ -64,6 +64,11 @@ function exists {
   return 1
 }
 
+function loadenv {
+  export $(cat *.env)
+  env
+}
+
 function waitsec {
   secs=$1 #$(($1 * 60))
   while [ $secs -gt 0 ]; do
