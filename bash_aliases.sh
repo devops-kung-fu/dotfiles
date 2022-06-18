@@ -767,10 +767,26 @@ if os Darwin; then
 	}
 
   function xagree {
-      sudo xcodebuild -license
+    sudo xcodebuild -license
+  }
+
+  function machine-name {
+    sudo scutil --set ComputerName $1
+    sudo scutil --set LocalHostName $1
+    sudo scutil --set HostName $1
   }
 
 fi
+
+#endregion
+
+
+#region AWS
+
+function list-instances {
+  echo -e "Searching current region for instances in the $1 environment..."
+  aws ec2 describe-instances --filters Name=instance-state-name,Values=running Name=env,Values=*$1* --query "Reservations[*].Instances[*].InstanceId" --output text
+}
 
 #endregion
 
