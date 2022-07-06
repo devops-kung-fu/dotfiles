@@ -51,6 +51,10 @@ function os {
   INSTALLEDOS=`lowercase \`uname\``
   PASSEDOS=`lowercase $1`
 
+  if [ -z "$1" ]; then
+    echo $INSTALLEDOS
+    return 0
+  fi
   if [[ $INSTALLEDOS == $PASSEDOS ]]; then
       return 0
   fi
@@ -106,7 +110,7 @@ function clippwd {
 
 #region linux specific
 
-if os Linux; then
+if ! os Darwin; then
   function update {
     sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y
   }
@@ -119,6 +123,7 @@ if os Linux; then
       return 1
     fi
   }
+
 fi
 
 #endregion
@@ -207,6 +212,7 @@ alias ipaddr="ifconfig | grep inet | grep -v inet6 | cut -d ' ' -f2"
 alias listen="sudo lsof -i -P -n | grep LISTEN"
 
 if os Linux; then
+  alias open="xdg-open"
   alias ports='sudo netstat -tulpn | grep LISTEN'
   alias mailports="netstat -tulpn | grep -E -w '25|80|110|143|443|465|587|993|995|4190'"
   alias ips="/sbin/ifconfig eth0 | /bin/grep 'inet' | /usr/bin/cut -d ':' -f 2 | grep -oE '((1?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\.){3}(1?[0-9][0-9]?|2[0-4][0-9]|25[0-5])'"
@@ -253,11 +259,36 @@ alias ggg='git log --oneline --graph --decorate --all'
 alias gg="git log --graph --abbrev-commit --decorate --date=relative --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' --all"
 alias grl="git remote get-url --all origin"
 
+alias grs=git-recursive-status
+alias grsl=git-recursive-status-long
+alias gb=git-branch
+
+function git-recursive-status {
+  find . -name '.git' | while read -r repo ; do repo=${repo%".git"}; (git -C "$repo" status -s | grep -q -v "^\$" && echo -e "\n\033[1m${repo}\033[m" && git -C "$repo" status -s) || true; done
+}
+
+function git-recursive-status-long {
+  set -e
+
+  status_ops="$*"
+
+  find . -name '.git' \
+    | while read -r repo
+  do
+    repo=${repo%".git"}
+    (git -C "$repo" status -s \
+      | grep -q -v "^\$" \
+      && echo -e "\n\033[1m${repo}\033[m" \
+      && git -C "$repo" status $status_ops) \
+      || true
+  done
+}
+
 # @description Creates a branch and checks it out if a param is passed, otherwise lists all branches
 # @example
 #   gb wip
 # @arg  string The name of the branch (optional)
-function gb {
+function git-branch {
   if [[ -n "$1" ]]; then
     git branch $1 && git checkout $1
   else
@@ -361,9 +392,11 @@ function git-commit-secure {
 
 # @description Adds, commits, and pushes current changes with a GPG key to origin and current branch
 # @arg string The commit message
-function gcs {
-  git-commit-secure "$1"
-}
+# function gcs {
+#   git-commit-secure "$1"
+# }
+
+alias gcs=git-commit-secure
 
 # @description Adds, commits, and pushes current changes with a GPG key to origin and current branch then pushes to all remotes
 # @arg string The commit message
@@ -386,7 +419,7 @@ export GPG_TTY=`tty`
 function git-clear {
   git pull -a > /dev/null
 
-  local branches=$(git branch --merged | grep -v 'develop' | grep -v 'master' | grep -v 'qa' | sed 's/^\s*//')
+  local branches=$(git branch --merged | grep -v 'develop' | grep -v 'main' | grep -v 'qa' | sed 's/^\s*//')
   branches=(${branches//;/ })
 
   if [ -z $branches ]; then
@@ -449,6 +482,8 @@ function dvol {
 	ddisk ls -l /docker/var/lib/docker/volumes/
 }
 
+# @description Removes a specific docker volume
+# @arg string The volume to remove
 function dvolrm {
 	read -p "Are you sure you want to force delete the \"$1\" docker volume? " -n 1 -r
 	echo
@@ -483,7 +518,7 @@ function docker-login {
 	docker exec -it $1 $2
 }
 
-function docke-run {
+function docker-run {
 	docker run --rm -it $1
 }
 
