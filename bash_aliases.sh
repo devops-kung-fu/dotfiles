@@ -64,9 +64,26 @@ function exists {
   return 1
 }
 
+# Loads environment variables line by line from a file
 function loadenv {
-  export $(cat *.env)
+  if [ $# -ne 1 ]; then
+    echo "Usage: loadenv <filename>"
+    return 1
+  fi
+
+  if [ ! -f $1 ]; then
+    echo "File not found: $1"
+    return 1
+  fi
+
+  if [ ! -s $1 ]; then
+    echo "File is empty: $1"
+    return 1
+  fi
+
+  export $(grep -v '^#' $1 | xargs)
   env
+  return 0
 }
 
 function waitsec {
@@ -114,15 +131,6 @@ function clippwd {
 if os Linux; then
   function update {
     sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y
-  }
-
-  function loadenv {
-    if [ -f $1 ]; then
-      export $(cat $1 | sed 's/#.*//g' | xargs)
-    else
-      echo "No $1 file found" 1>&2
-      return 1
-    fi
   }
 fi
 
@@ -183,11 +191,15 @@ function search {
 
 #region files
 
+#  @description : Count lines in a file
+#  @param : $1 : file name
 function linecount () {
 	find ./$1 -name '*.*' | xargs wc -l
 }
 
-function rmrecurdir {
+# @description : Delete a folder from all subfolders recursively
+# @param : $1 : folder name
+function rrd {
   echo The following folders will be ${red} DELETED! ${reset}
   echo
   find -type d -name $1 -a -prune
@@ -195,12 +207,19 @@ function rmrecurdir {
   confirm && find -type d -name $1 -a -prune -exec rm -rf {} \;
 }
 
+# @description : Delete a file from all subfolders recursively
+# @param : $1 : file name
 function rr {
   if [ $# -ne 1 ]; then
-    echo "rr - Removes files recursively"
-    echo "Usage: rr filename"
+    echo "Usage: loadenv <filename>"
+    return 1
   else
-    find . -name "$1" -delete
+    read -p "Are you sure you want to delete $1? (y/n)" answer
+    if [ "$answer" == "y" ]; then
+      find . -name "$1" -delete
+    else
+      echo "File deletion aborted."
+    fi
   fi
 }
 
@@ -288,6 +307,10 @@ function git-clone-org {
 #   gitorade v1.0.0
 # @arg string The version number for the release
 function gitorade {
+  if [ $# -ne 1 ]; then
+    echo "Usage: gitorade <version>"
+    return 1
+  fi
   message="Release $1"
   branch=`git branch 2> /dev/null | grep -e ^* | sed -E  s/^\\\\\*\ \(.+\)$/\\\\\\1\\ /`
   git add .
@@ -322,7 +345,7 @@ function git-whoami {
 # @description Pulls all remote branches locally - definitely use with caution
 # @noargs
 function git-pull-all {
-	git branch -r | grep -v '\->' | while read remote; do git branch --track "${remote#origin/}" "$remote"; done
+	#git branch -r | grep -v '\->' | while read remote; do git branch --track "${remote#origin/}" "$remote"; done
 	git fetch --all
 	git pull --all
 }
@@ -391,7 +414,7 @@ export GPG_TTY=`tty`
 function git-clear {
   git pull -a > /dev/null
 
-  local branches=$(git branch --merged | grep -v 'develop' | grep -v 'master' | grep -v 'qa' | sed 's/^\s*//')
+  local branches=$(git branch --merged | grep -v '\*' | sed 's/^\s*//' | grep -v 'main$')
   branches=(${branches//;/ })
 
   if [ -z $branches ]; then
@@ -409,9 +432,10 @@ function git-clear {
 
   echo 'Deleting...'
 
+  git fetch --prune
   git remote prune origin
-  echo $branches | xargs git branch -d
-  git branch -vv
+  echo $branches | xargs -n 1 git branch -d &&
+  git remote prune origin 
 }
 
 # @description Shows the history of a specific file
@@ -474,10 +498,10 @@ function docker-logged-in {
   fi
 }
 
+# @description Interactively logs into a container
+# This function takes two arguments:$1 represents the shell to use, and $2 represents the Docker image to run. It then uses the docker run command to start a new container with the specified image and shell. The --rm flag ensures that the container is automatically removed when it exits, and the -it flag allocates a pseudo-TTY and opens an interactive session. Finally, the --entrypoint flag specifies the shell to use inside the container.
 function docker-shell {
-  SHELL=$1
-  IMAGE=$2
-  docker run --rm -it --entrypoint=/bin/$SHELL $2
+  docker run --rm -it --entrypoint=/bin/$1 $2
 }
 
 function docker-hub-login {
@@ -488,7 +512,7 @@ function docker-login {
 	docker exec -it $1 $2
 }
 
-function docke-run {
+function docker-run {
 	docker run --rm -it $1
 }
 
