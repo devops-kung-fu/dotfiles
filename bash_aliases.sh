@@ -320,6 +320,19 @@ function gitorade {
   git push origin --tags
 }
 
+# @description Removes a release tag from the origin remote and current branch
+# @example
+#   de-gitorade v1.0.0
+# @arg string The version number for the release
+function de-gitorade {
+  if [ $# -ne 1 ]; then
+    echo "Usage: de-gitorade <version>"
+    return 1
+  fi
+  git tag -d $1
+  git push --delete origin $1
+}
+
 # @description Logs into github with either a --global
 # @example
 #   cloneorg [api-token] [organization-name]
