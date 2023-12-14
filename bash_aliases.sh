@@ -35,6 +35,26 @@ function notavailable {
   echo "$1 not available on `lowercase \`uname\``"
 }
 
+function alias-help {
+  if [[ -z "$1" ]]; then
+    echo "Error: Please provide an alias as an argument"
+    return 1
+  fi
+
+  while read -r line; do
+    full="${line}"
+    line="${line#alias }"
+    line="${line%=*}"
+    if [[ "$line" == "$1" ]]; then
+      echo $1 -"${full#*#}"
+      return 0
+    fi
+  done < "$HOME/.bash_aliases"
+
+  echo "Alias not found: $1"
+  return 1
+}
+
 function progressbar {
   local w=80 p=$1;  shift
   # create a string of spaces, then change them to dots
@@ -320,6 +340,13 @@ function gitorade {
   git push origin --tags
 }
 
+function ungitorade() {
+    local tag_name=$1
+
+    git tag -d "$tag_name"
+    git push origin :refs/tags/"$tag_name"
+}
+
 # @description Removes a release tag from the origin remote and current branch
 # @example
 #   de-gitorade v1.0.0
@@ -351,6 +378,7 @@ function git-user {
 }
 
 # @description Returns the current logged in git user information
+# @noargs
 function git-whoami {
 	echo "git logged in as \"`git config user.name` <`git config user.email`>\""
 }
@@ -363,23 +391,24 @@ function git-pull-all {
 	git pull --all
 }
 
-function git-rmtag {
-  if [ $# -ne 1 ]; then
-    echo Usage: $0 {tag}
-  else
-    echo Removing tag $1
-    git tag -d $1
-    git push origin :refs/tags/$1
-  fi
-}
 
-function git-retag {
-  TAG=`git describe --abbrev=0 --tags`
-  git tag -d $TAG
-  git push origin :refs/tags/$TAG
-  git tag $TAG
-  git push --tags
-}
+# function git-rmtag {
+#   if [ $# -ne 1 ]; then
+#     echo Usage: $0 {tag}
+#   else
+#     echo Removing tag $1
+#     git tag -d $1
+#     git push origin :refs/tags/$1
+#   fi
+# }
+
+# function git-retag {
+#   TAG=`git describe --abbrev=0 --tags`
+#   git tag -d $TAG
+#   git push origin :refs/tags/$TAG
+#   git tag $TAG
+#   git push --tags
+# }
 
 function git-submodule-delete {
 	sed -i ".bak" "/$1/d" .gitmodules
@@ -544,17 +573,12 @@ function docker-shell-app {
 }
 
 function docker-deep-clean {
-	# Delete every Docker containers
-	# Must be run first because images are attached to containers
-	docker rm $(docker ps -a -q)
-
-	# Delete every Docker image
+  docker container prune
 	docker rmi $(docker images -q)
 }
 
 function docker-stop {
-  echo $(docker ps -a -q -f status=running) | xargs docker stop
-  echo $(docker ps -a -q -f status=exited) | xargs docker rm
+  docker stop $(docker ps -q)
 }
 
 # @description Removes all cached docker images by name
@@ -568,10 +592,11 @@ function docker-rmi {
 alias d="docker"
 alias ds="_ds"
 alias de='${EDITOR} Dockerfile'
-alias dl='d ps -l -q'
-alias li='d image list'
+alias dl='docker ps -l -q'
+alias dli='d image list'
 alias dkl='d kill `dl` && docker rm `dl`'
-alias dil='d exec -it `dl` bash'
+alias dil='docker exec -it $(docker ps -q -l) bash || docker exec -it $(docker ps -q -l) sh' # interactively logs in to the last container started
+alias dsl='docker stop $(docker ps -q -l)' #stops the last container started
 alias dsh='d -shell-app'
 alias dlog='d logs -f `dl`'
 alias dcc='d ps -a -q -f status=exited | xargs L1 docker rm -v'
@@ -579,9 +604,9 @@ alias dci='d rmi $(docker images -q) --force'
 alias dps='d ps'
 alias dr='d -run'
 
-alias dsa='d stop $(d ps -a -q)'
-alias drma='d rm $(d ps -aq)'
-alias diu='d images | awk `{print $1}` | xargs -L1 docker pull'
+alias dsa='docker stop $(docker ps -a -q)' #stops all Docker containers, whether running or stopped, on your system
+alias drma='docker rm $(docker ps -aq)' #removes all Docker containers, whether running or stopped, from your system
+alias diu='docker images | awk `{print $1}` | xargs -L1 docker pull' # Updates all local Docker images on your system
 alias up='docker-compose up -d'
 alias down='docker-compose down'
 
