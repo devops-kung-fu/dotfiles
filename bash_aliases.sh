@@ -1,17 +1,31 @@
 #!/bin/bash
 
 #region prompt
-
+# @description Sets a colored prompt for the terminal, including user, host, current location, and Git branch (if applicable).
 function color_prompt {
+    # Set the color for the user and host
     local __user_and_host="\[\033[01;32m\]\u@\h"
+
+    # Set the color for the current location (working directory)
     local __cur_location="\[\033[01;34m\]\w"
+
+    # Set the color for the Git branch (if in a Git repository)
     local __git_branch_color="\[\033[31m\]"
     local __git_branch='`git branch 2> /dev/null | grep -e ^* | sed -E  s/^\\\\\*\ \(.+\)$/\(\\\\\1\)\ /`'
+
+    # Set the color for the prompt tail (symbol indicating the end of the prompt)
     local __prompt_tail="\[\033[35m\]$"
+
+    # Set the color for the last part of the prompt to reset any color changes
     local __last_color="\[\033[00m\]"
+
+    # Combine all components to form the complete PS1 prompt string
     export PS1="$__user_and_host $__cur_location $__git_branch_color$__git_branch$__prompt_tail$__last_color "
 }
+
+# Call the color_prompt function to apply the colored prompt
 color_prompt
+
 
 #endregion
 
@@ -63,13 +77,18 @@ function progressbar {
   printf "\r\e[K|%-*s| %3d %% %s" "$w" "$dots" "$p" "$*"; 
 }
 
-function lowercase(){
+# @description Converts a string to lowercase.
+# @param $1 string The string to convert to lowercase.
+function lowercase {
     echo "$1" | sed "y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
 }
 
+# @description Checks if the current operating system matches the specified one.
+# @param $1 string The operating system to check against.
+# @return 0 if the operating systems match, 1 otherwise.
 function os {
-  INSTALLEDOS=`lowercase \`uname\``
-  PASSEDOS=`lowercase $1`
+  INSTALLEDOS=$(lowercase $(uname))
+  PASSEDOS=$(lowercase $1)
 
   if [[ $INSTALLEDOS == $PASSEDOS ]]; then
       return 0
@@ -77,6 +96,9 @@ function os {
   return 1
 }
 
+# @description Checks if a command exists in the system.
+# @param $1 string The command to check for existence.
+# @return 0 if the command exists, 1 otherwise.
 function exists {
   if [ -x "$(command -v $1)" ]; then
     return 0
@@ -84,30 +106,28 @@ function exists {
   return 1
 }
 
-# Loads environment variables line by line from a file
+
+# @description Sources the specified .env file or sources every .env file in the current folder.
+# @param $1 string (optional) Path to the .env file to source.
 function loadenv {
-  if [ $# -ne 1 ]; then
-    echo "Usage: loadenv <filename>"
-    return 1
+  if [ -n "$1" ]; then
+    # If $1 is provided, source the specified .env file
+    echo "Sourcing: $1"
+    source "$1"
+  else
+    # Source every .env file in the current folder
+    for env_file in ./*.env; do
+      [ -e "$env_file" ] || continue
+      echo "Sourcing: $env_file"
+      source "$env_file"
+    done
   fi
-
-  if [ ! -f $1 ]; then
-    echo "File not found: $1"
-    return 1
-  fi
-
-  if [ ! -s $1 ]; then
-    echo "File is empty: $1"
-    return 1
-  fi
-
-  export $(grep -v '^#' $1 | xargs)
-  env
-  return 0
 }
 
+# @description Waits for a specified number of seconds, displaying a countdown.
+# @param $1 int Number of seconds to wait.
 function waitsec {
-  secs=$1 #$(($1 * 60))
+  secs=$1
   while [ $secs -gt 0 ]; do
     printf "Waiting: $secs \033[0K\r"
     sleep 1
@@ -115,6 +135,9 @@ function waitsec {
   done
 }
 
+# @description Prompts the user for confirmation with a default message.
+# @param ${1:-Are you sure? [y/N]} string Custom confirmation message (optional).
+# @returns true if the user confirms (y or yes), false otherwise.
 function confirm {
   read -r -p "${1:-Are you sure? [y/N]} " response
   case "$response" in
@@ -127,10 +150,13 @@ function confirm {
   esac
 }
 
-function aliases { # Show a list of functions and aliases
+# @description Displays a list of functions and aliases defined in ~/.bash_aliases.
+function aliases {
+  # Extracts and displays a list of functions and aliases from ~/.bash_aliases.
   aliases=$(grep "^function" ~/.bash_aliases | awk '{print $2}')
   echo $aliases
 }
+
 
 # @description Copies the contents of a file to the clipboard.
 # @param $1 string Path to the file.
