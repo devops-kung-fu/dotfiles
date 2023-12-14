@@ -51,6 +51,38 @@ function notavailable {
   echo "$1 not available on $(lowercase $(uname))"
 }
 
+# Experimental
+get_alias_table() {
+  local file_path="$1"
+  local wrap_width=70
+
+  # Check if the file exists
+  if [ ! -f "$file_path" ]; then
+    echo "Error: File not found: $file_path"
+    exit 1
+  fi
+
+  # Function to wrap text to a specified width
+  wrap_text() {
+    local text="$1"
+    echo "$text" | fold -s -w "$wrap_width"
+  }
+
+  # Print the table header
+  echo "+---------------------+----------------------------------------------------+"
+  printf "| %-20s | %-70s |\n" "Alias" "Description"
+  echo "+---------------------+----------------------------------------------------+"
+
+  # Extract aliases and descriptions from the file
+  grep -E '^alias [a-zA-Z0-9_]+=' "$file_path" | while read -r line; do
+    alias_name=$(echo "$line" | cut -d '=' -f1 | cut -d ' ' -f2)
+    comment=$(grep -E "^# @description" "$file_path" | grep "$alias_name" | sed 's/# @description //')
+    wrapped_comment=$(wrap_text "$comment")
+    printf "| %-20s | %-70s |\n" "$alias_name" "$wrapped_comment"
+    echo "+---------------------+----------------------------------------------------+"
+  done
+}
+
 # @description Displays the help information for a specified alias.
 # @param $1 string The alias for which to display help information.
 # @return 0 if the alias is found, 1 otherwise.
@@ -416,7 +448,7 @@ function clipip {
 
 # @description Displays the current MAC address of all network interfaces.
 function currentmac {
-    echo -e "\e[1;31m"`ifconfig | awk -FHWaddr '{ print $2 }'`"\e[0m"
+  echo -e "\e[1;31m"`ifconfig | awk -FHWaddr '{ print $2 }'`"\e[0m"
 }
 
 
@@ -595,6 +627,69 @@ function gc {
 	git add .
 	git commit -am "$1"
 	git push
+}
+
+# @description Check if local git branches have corresponding remote branches or if remote branches were deleted.
+# @example
+#   checkRemoteBranches
+function checkRemoteBranches {
+    # Fetch the latest information from the remote repository
+    git fetch -p
+
+    # Iterate over all local branches
+    for branch in $(git branch | sed 's/^[* ]//'); do
+        # Check if the branch has a corresponding remote branch
+        if git show-ref --quiet refs/remotes/origin/$branch; then
+            echo "Branch '$branch' has a corresponding remote branch."
+        else
+            echo "Branch '$branch' does not have a corresponding remote branch."
+
+            # Check if the remote branch was deleted
+            if git ls-remote --exit-code origin $branch >/dev/null 2>&1; then
+                echo "The remote branch for '$branch' was deleted."
+            else
+                echo "No information about the remote branch for '$branch'."
+            fi
+        fi
+    done
+}
+
+# @description EXPERIMENTAL List remote branches that are not present locally in the Git repository.
+# @example
+#   get_local_branches_not_on_remote
+function get_local_branches_not_on_remote() {
+  # Get the current branch name
+  local current_branch
+  current_branch=$(git symbolic-ref --short HEAD)
+
+  # Get the remote associated with the current branch
+  local remote_name
+  remote_name=$(git config "branch.$current_branch.remote")
+
+  if [ -z "$remote_name" ]; then
+    echo "Error: No remote associated with the current branch."
+    exit 1
+  fi
+
+  # Fetch the latest changes from the remote
+  git fetch "$remote_name"
+
+  # Get a list of remote branches
+  remote_branches=$(git branch -r | sed 's/^[[:space:]]*//' | sed 's/ ->.*$//')
+
+  # Get a list of local branches
+  local_branches=$(git branch | sed 's/^[[:space:]]*//' | sed 's/^* //')
+
+  # Determine local branches not in the list of remote branches
+  local_branches_not_on_remote=$(comm -23 <(echo "$local_branches" | sort) <(echo "$remote_branches" | sort | cut -d '/' -f 2-))
+
+  # Print the list of local branches not on the remote
+  if [ -z "$local_branches_not_on_remote" ]; then
+    echo "All local branches are also present on $remote_name."
+  else
+    echo "Local branches not present on $remote_name:"
+    echo "$local_branches_not_on_remote"
+  fi
 }
 
 export GPG_TTY=`tty`
