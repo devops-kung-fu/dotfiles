@@ -45,10 +45,15 @@ reset=`tput sgr0`
 export EDITOR="nano"
 export TEMP="/tmp"
 
+# @description Displays a message indicating that a specific command or function is not available on the current operating system.
+# @param $1 string The name of the command or function that is not available.
 function notavailable {
-  echo "$1 not available on `lowercase \`uname\``"
+  echo "$1 not available on $(lowercase $(uname))"
 }
 
+# @description Displays the help information for a specified alias.
+# @param $1 string The alias for which to display help information.
+# @return 0 if the alias is found, 1 otherwise.
 function alias-help {
   if [[ -z "$1" ]]; then
     echo "Error: Please provide an alias as an argument"
@@ -69,6 +74,9 @@ function alias-help {
   return 1
 }
 
+# @description Displays a progress bar in the terminal.
+# @param $1 int The percentage of completion for the progress bar.
+# @param $@ string Additional information to display alongside the progress bar.
 function progressbar {
   local w=80 p=$1;  shift
   # create a string of spaces, then change them to dots
@@ -204,19 +212,37 @@ fi
 
 #region navigation
 
+# @description Changes directory to the parent directory.
 alias ..="cd .."
+
+# @description Changes directory to two levels up from the current directory.
 alias ....="cd ../../"
+
+# @description Changes directory to three levels up from the current directory.
 alias ......="cd ../../../"
 
 if [ -x /usr/bin/dircolors ]; then
-    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
-    alias ls='ls --color=auto'
-    alias dir='dir --color=auto'
-    alias vdir='vdir --color=auto'
+  # @description Checks if the ~/.dircolors file is readable, and if so, evaluates its content; otherwise, evaluates the default dircolors settings.
+  test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
 
-    alias grep='grep --color=auto'
-    alias fgrep='fgrep --color=auto'
-    alias egrep='egrep --color=auto'
+  # @description Alias for 'ls' command with automatic coloring enabled.
+  alias ls='ls --color=auto'
+
+  # @description Alias for 'dir' command with automatic coloring enabled.
+  alias dir='dir --color=auto'
+
+  # @description Alias for 'vdir' command with automatic coloring enabled.
+  alias vdir='vdir --color=auto'
+
+  # @description Alias for 'grep' command with automatic coloring enabled.
+  alias grep='grep --color=auto'
+
+  # @description Alias for 'fgrep' command with automatic coloring enabled.
+  alias fgrep='fgrep --color=auto'
+
+  # @description Alias for 'egrep' command with automatic coloring enabled.
+  alias egrep='egrep --color=auto'
+
 fi
 
 # @description Lists all files and directories in long format with human-readable sizes.
