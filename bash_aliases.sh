@@ -332,9 +332,32 @@ function search {
 
 #region files
 
-#  @description : Count lines in a file
-#  @param : $1 : file name
-function linecount () {
+# @description Counts the number of files recursively in the current folder.
+# @usage countfiles
+function countfiles() {
+    # Use find to locate all files (-type f) in the current directory and its subdirectories
+    # Pipe the result to wc -l to count the lines, which represents the number of files
+    local count=$(find . -type f | wc -l)
+    
+    # Print the number of files
+    echo "Number of files: $count"
+}
+
+# @description Counts all files (including hidden files) recursively in the current folder.
+# @usage countallfiles
+function countallfiles() {
+    # Use find to locate all files (-type f) in the current directory and its subdirectories,
+    # including hidden files (name starting with a dot)
+    # Pipe the result to wc -l to count the lines, which represents the number of files
+    local count=$(find . -type f -exec basename {} \; | wc -l)
+    
+    # Print the number of files
+    echo "Number of files (including hidden): $count"
+}
+
+# @description : Counts the number of lines in a file
+# @param : $1 filename
+function countlines () {
 	find ./$1 -name '*.*' | xargs wc -l
 }
 
