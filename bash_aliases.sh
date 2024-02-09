@@ -150,19 +150,24 @@ function exists {
 # @description Sources the specified .env file or sources every .env file in the current folder.
 # @param $1 string (optional) Path to the .env file to source.
 function loadenv {
-  if [ -n "$1" ]; then
-    # If $1 is provided, source the specified .env file
-    echo "Sourcing: $1"
-    source "$1"
+  local file="$1"
+
+  if [ -n "$file" ]; then
+    echo "Sourcing: $file"
+    while IFS= read -r line; do
+      export "$line"
+    done < "$file"
   else
-    # Source every .env file in the current folder
     for env_file in ./*.env; do
-      [ -e "$env_file" ] || continue
       echo "Sourcing: $env_file"
-      source "$env_file"
+      while IFS= read -r line; do
+        export "$line"
+      done < "$env_file"
     done
   fi
+
 }
+
 
 # @description Waits for a specified number of seconds, displaying a countdown.
 # @param $1 int Number of seconds to wait.
@@ -332,10 +337,11 @@ function search {
 
 #region files
 
-# @description Counts the number of files recursively in the current folder.
-# @usage countfiles
-function countfiles() {
-    # Use find to locate all files (-type f) in the current directory and its subdirectories
+# @description Counts all files (including hidden files) recursively in the current folder.
+# @usage countallfiles
+function countallfiles() {
+    # Use find to locate all files (-type f) in the current directory and its subdirectories,
+    # including hidden files (name starting with a dot)
     # Pipe the result to wc -l to count the lines, which represents the number of files
     local count=$(find . -type f | wc -l)
     
@@ -343,17 +349,17 @@ function countfiles() {
     echo "Number of files: $count"
 }
 
-# @description Counts all files (including hidden files) recursively in the current folder.
-# @usage countallfiles
-function countallfiles() {
-    # Use find to locate all files (-type f) in the current directory and its subdirectories,
-    # including hidden files (name starting with a dot)
+# @description Counts the number of non-hidden files recursively in the current folder.
+# @usage countfiles
+function countfiles() {
+    # Use find to locate all non-hidden files (-type f, not starting with a dot) in the current directory and its subdirectories
     # Pipe the result to wc -l to count the lines, which represents the number of files
-    local count=$(find . -type f -exec basename {} \; | wc -l)
+    local count=$(find . -type f ! -name '.*' | wc -l)
     
     # Print the number of files
-    echo "Number of files (including hidden): $count"
+    echo "Number of non-hidden files: $count"
 }
+
 
 # @description : Counts the number of lines in a file
 # @param : $1 filename
