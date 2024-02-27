@@ -1,3 +1,3 @@
 #!/bin/bash
 
-@echo "djschleen"
+@echo "Installing things..."
