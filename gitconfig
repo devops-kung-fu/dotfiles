@@ -1,0 +1,9 @@
+[push]
+	default = simple
+	autoSetupRemote = true
+[core]
+	editor = nano
+[branch]
+	autosetupmerge = true
+[init]
+	defaultBranch = main
