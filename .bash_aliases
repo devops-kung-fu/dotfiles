@@ -44,6 +44,7 @@ reset=`tput sgr0`
 
 export EDITOR="nano"
 export TEMP="/tmp"
+export GPG_TTY=`tty`
 
 # @description Displays a message indicating that a specific command or function is not available on the current operating system.
 # @param $1 string The name of the command or function that is not available.
@@ -652,7 +653,7 @@ function gcsa {
 # @description Adds, commits, and pushes current changes WITHOUT a GPG key to origin and current branch
 # @arg string The commit message
 function gc {
-  echo "Use the non-secure way?" && confirm
+  //echo "Use the non-secure way?" && confirm
 	git add .
 	git commit -am "$1"
 	git push
@@ -720,8 +721,6 @@ function get_local_branches_not_on_remote() {
     echo "$local_branches_not_on_remote"
   fi
 }
-
-export GPG_TTY=`tty`
 
 function git-clear {
   git pull -a > /dev/null
